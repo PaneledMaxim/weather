@@ -1,7 +1,8 @@
 # gui.py
 import tkinter as tk
 from tkinter import ttk, messagebox
-from weather.commands import weather_by_city
+from app.commands import weather_by_city
+
 
 def format_weather(result):
     # result может быть либо error, либо структура с meta/data
