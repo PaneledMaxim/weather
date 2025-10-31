@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.env
+weather_cache.json
+.idea/
+.vscode/
+*.log
