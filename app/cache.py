@@ -1,38 +1,40 @@
-# weather/cache.py
-import json
-import os
-import time
-from typing import Optional
+# app/cache.py
+from .database import cache_get, cache_set, add_to_history, init_db
 
-CACHE_FILE = "weather_cache.json"
-CACHE_TTL = 300  # сек (5 минут)
+init_db()
 
-def _load_cache():
-    if os.path.exists(CACHE_FILE):
-        try:
-            with open(CACHE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
+def get(key: str):
+    return cache_get(key)
 
-def _save_cache(cache: dict):
-    with open(CACHE_FILE, "w", encoding="utf-8") as f:
-        json.dump(cache, f, ensure_ascii=False, indent=2)
-
-def get(key: str) -> Optional[dict]:
-    cache = _load_cache()
-    entry = cache.get(key)
-    if not entry:
-        return None
-    if time.time() - entry.get("timestamp", 0) > CACHE_TTL:
-        # устарело
-        cache.pop(key, None)
-        _save_cache(cache)
-        return None
-    return entry.get("data")
-
-def set(key: str, data: dict):
-    cache = _load_cache()
-    cache[key] = {"data": data, "timestamp": time.time()}
-    _save_cache(cache)
+def set(key: str, data: dict) -> None:
+    cache_set(key, data)
+    
+    # === Записываем в историю только при реальном запросе к API ===
+    if data.get("source") == "api":
+        result = data["result"]
+        cw = None
+        city = None
+        lat = lon = None
+        
+        if "meta" in result:
+            meta = result["meta"]
+            city = meta.get("name")
+            lat = meta.get("latitude")
+            lon = meta.get("longitude")
+            cw = result["data"]["current_weather"]
+        elif "data" in result:
+            cw = result["data"]["current_weather"]
+            # по координатам — город не знаем
+        else:
+            cw = result.get("current_weather")
+        
+        if cw:
+            add_to_history(
+                city=city,
+                lat=lat,
+                lon=lon,
+                temperature=cw["temperature"],
+                windspeed=cw["windspeed"],
+                winddirection=cw["winddirection"],
+                source="api"
+            )
